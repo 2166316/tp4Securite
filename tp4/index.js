@@ -20,6 +20,8 @@ const captcha = new CaptchaJs({ client: process.env.CAPTCHAS_CLIENT, secret: pro
 
 var app = express();
 
+var bannedIps = [];
+
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
@@ -30,6 +32,26 @@ app.use(session({
     nbDeCallDisponible:3
 }));  
 
+//en ram les ips 
+ramIps();
+
+function ramIps(){
+    let ipfile = path.join(__dirname, 'ip.txt')
+    fs.readFile(ipfile, 'utf8', (err, data) => {
+        if (err) {
+            console.error('Error reading file:', err);
+            return;
+        }
+
+        bannedIps = data.split(/\r?\n/);
+
+        /*for(let ip of bannedIps){
+            console.log(ip);
+        }*/
+        console.log(bannedIps.length);
+    });
+}
+
 app.set('view engine', 'ejs');
 
 //folder de views
@@ -39,15 +61,26 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use((req, res, next) => {
-    console.log(req.body)
+    //console.log((req.ip));
+    //validation
+    let ip = req.ip.replace(":","");
+    ip = ip.replace("::","");
+    ip = ip.replace(":","");
+    ip = ip.replace(":","");
+    ip = ip.replace("ffff","");
 
-    if (req.session.nbDeCallDisponible === undefined) {
-        req.session.nbDeCallDisponible = 3; 
-    } else {
-       // req.session.nbDeCallDisponible--; 
+    //console.log((ip));
+    if(bannedIps.includes(ip)){
+        res.render('nope');
+    }else{
+        if (req.session.nbDeCallDisponible === undefined) {
+            req.session.nbDeCallDisponible = 3; 
+        } else {
+           // req.session.nbDeCallDisponible--; 
+        }
+        console.log(req.session.nbDeCallDisponible);
+        next(); 
     }
-    console.log(req.session.nbDeCallDisponible);
-    next(); 
 });
 
 //bd
@@ -90,7 +123,7 @@ app.post('/login', (req, res) => {
                 };
                 res.render('index', data);
             }
-            console.log(results.length)
+            //console.log(results.length)
 
             const user = [];
             let pass = "";
@@ -104,7 +137,7 @@ app.post('/login', (req, res) => {
             }else{
 
                 user.push(results[0]); 
-                console.log(user);
+               // console.log(user);
                 pass = user[0].mot_de_passe+"";
                 
                  bcrypt.compare(passwordstr, pass, (err, result) => {
@@ -118,10 +151,10 @@ app.post('/login', (req, res) => {
                     }
                     
                     if (result) {
-                        console.log("200:");
-                        console.log(loginstr);
-                        console.log(passwordstr);
-                        console.log("-");
+                        //console.log("200:");
+                        //console.log(loginstr);
+                        //console.log(passwordstr);
+                       // console.log("-");
                         
                         return res.render('connected');
                     } else {
@@ -143,6 +176,7 @@ app.post('/capchatverif', (req, res) => {
     if(req.body.captchaPassword == "abc"){
         const data = {
             title: 'Connexion',
+            message:""
         };
         req.session.nbDeCallDisponible = 3; 
         res.render('index',data);
@@ -156,167 +190,45 @@ app.post('/capchatverif', (req, res) => {
 });
 
 app.post('/register', (req, res) => {
-    console.log(req.body)
     let { username, password } = req.body;
-    let loginstr = username ;
-    let passwordstr = password ;
-    console.log(passwordstr)
-    console.log(loginstr)
-    bcrypt.hash( passwordstr, 12, (err1, hash) => {
-        if (err1) {
-          console.error(err1);
-          return;
-        }
-        con.query("INSERT INTO tp4securite.utilisateur (login, mot_de_passe) VALUES ( ?, ?)", [loginstr, hash], (err2, result) => {
-            if (err2) {
-                var error = err2;
-                console.log(error)
-                const jsonfilePath = path.join(__dirname, 'index.html');
+    let loginstr = username;
+    let passwordstr = password;
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[%&$!#@])[a-zA-Z\d%&$!#@]{10,}(?:(.)\1{2,})?$/;
     
-                fs.readFile(jsonfilePath,'utf8', (err2, html) => {
-                    if (err2) {
-                        console.error('Error reading file:', err2);
-                        res.send('Internal Server Error');
-                    }
-                    let htmlmodifie = html.replace("<!-- INSERT_MESSAGE_HERE -->",error);
-                    res.send(htmlmodifie);
-                });
-            }else{
-                res.send("REGISTERED");
-            }
-        });
-      });
-});
-
-/*app.post('/login', (req, res) => {
-    console.log(req.session.nbDeCallDisponible);
-    req.session.nbDeCallDisponible = (req.session.nbDeCallDisponible - 1 );
-
-    console.log(req.body);
-    return res.status(200).end();
-    /*const { username, password } = req.body;
-    let loginstr = username ;
-    let passwordstr = password ;
-    con.query("SELECT * FROM tp4securite.utilisateur WHERE login = ?", [loginstr], (err, results, fields) => {
+    con.query("SELECT * FROM tp4securite.utilisateur", (err, results, fields) => {
         if (err) {
             console.error(err);
-            return res.status(500).send("Internal Server Error");
-        }
-        
-        if (results.length === 0) {
-            return res.status(404).send("User not found");
+            return res.status(500).send("Error occurred while fetching user data.");
         }
 
-        const user = results[0]; 
-        let pass = user.mot_de_passe;
-        //console.log(loginstr);
-        //console.log(passwordstr);
-        //console.log(pass);
-        bcrypt.compare(passwordstr, pass, (err, result) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).send("Internal Server Error");
-            }
-            
-            if (result) {
-                console.log("200:");
-                console.log(loginstr);
-                console.log(passwordstr);
-                console.log("-");
-                return res.status(200).send("Login successful");
-            } else {
-     
-                return res.status(401).send("Invalid username or password");
-            }
-        });
-    });*/
-/*});*/
+        if (results.length === 0) {
+            return res.render('index', { title: 'Connexion', message: "No users found." });
+        }
+
+        if (passwordRegex.test(passwordstr) === false ) {
+            return res.render('index', { title: 'Connexion', message: "Le password doit être plus de 10 lettres/nombres" });
+        } else {
+            bcrypt.hash(passwordstr, 12, (err1, hash) => {
+                if (err1) {
+                    console.error(err1);
+                    return res.status(500).send("Error occurred while hashing password.");
+                }
+                
+                con.query("INSERT INTO tp4securite.utilisateur (login, mot_de_passe) VALUES (?, ?)", [loginstr, hash], (err2, result) => {
+                    if (err2) {
+                        console.error(err2);
+                        return res.status(500).send("Error occurred while inserting user data.");
+                    }
+
+                    return res.render('index', { title: 'Connexion', message: "Registered avec succès" });
+                });
+            });
+        }
+    });
+});
 
 
 app.listen(3001, () => {
     console.log('Serveur en écoute sur le port 3001');
 });
-
-
-
-
-//const users = [];
-
-    /*con.query("SELECT * FROM tp4securite.utilisateur", (err, result, fields) => {
-        if (err) {
-            res.status(500).json({ error: 'An error occurred' });
-            return;
-        }
-        result.forEach(row => {
-            const u = new User(row.login, row.mot_de_passe);
-            users.push(u);
-        });
-
-
-        let found = false;
-        let otherUser = null;
-        users.forEach(u =>{
-            if(u.username == user.username && u.password == user.password){
-                found = true;
-                return;
-            }
-            if(u.password == user.password){
-                otherUser = u.username;
-            }
-        });
-
-        console.log(__dirname  + '/public');
-        if(found){
-            res.status(200).send("CONNECTED");
-        }else{
-            var error = 'ERROR'
-            const jsonfilePath = path.join(__dirname, 'index.html');
-
-            fs.readFile(jsonfilePath,'utf8', (err, html) => {
-                if (err) {
-                    console.error('Error reading file:', err);
-                    res.status(500).send('Internal Server Error');
-                }
-                let htmlmodifie = html.replace("<!-- INSERT_MESSAGE_HERE -->",error);
-                res.send(htmlmodifie);
-            });
-          
-        }
-    });/*const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Max requests per window
-    message: 'Too many requests from this IP, please try again later',
-    
-});
-
-app.use('/', limiter);*/
-
-/*app.use(session({
-    genid: function(req) {
-      return genuuid() // use UUIDs for session IDs
-    },
-    secret: 'keyboard cat'
-}))*/
-
-//var passwordGen = require('./passwordgenerator');
-
-//app.use(express.static("img"));
-//app.use(bodyParser.urlencoded({ extended: false }));
-
-/*app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-
-app.get("/genpasswords",(req, res) => {
-    passwordGen.password3LettreMinuscule();
-    res.sendStatus(200);
-})/*app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-
-app.get("/genpasswords",(req, res) => {
-    passwordGen.password3LettreMinuscule();
-    res.sendStatus(200);
-})**/
