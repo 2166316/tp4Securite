@@ -1,0 +1,12 @@
+[
+  {"id":1,"nom":"Dupont","login":"dupont123","adresse":"1 rue de la Paix","email":"dupont@example.com","mot_de_passe":"mdp123"},
+  {"id":2,"nom":"Martin","login":"martin456","adresse":"15 avenue des Lilas","email":"martin@example.com","mot_de_passe":"motdepasse456"},
+  {"id":3,"nom":"Durand","login":"durand789","adresse":"8 chemin du Moulin","email":"durand@example.com","mot_de_passe":"azerty789"},
+  {"id":4,"nom":"Lefebvre","login":"lefebvre101","adresse":"20 rue des Roses","email":"lefebvre@example.com","mot_de_passe":"pass1234"},
+  {"id":5,"nom":"Dubois","login":"dubois2022","adresse":"12 rue de la Liberté","email":"dubois@example.com","mot_de_passe":"qwerty2022"},
+  {"id":6,"nom":"Moreau","login":"moreau33","adresse":"5 avenue des Pins","email":"moreau@example.com","mot_de_passe":"test123"},
+  {"id":7,"nom":"Garcia","login":"garcia_77","adresse":"3 rue du Château","email":"garcia@example.com","mot_de_passe":"password77"},
+  {"id":8,"nom":"Rodriguez","login":"rodriguez99","adresse":"17 avenue des Fleurs","email":"rodriguez@example.com","mot_de_passe":"mdp2023"},
+  {"id":9,"nom":"Fournier","login":"fournier8","adresse":"9 rue de la Fontaine","email":"fournier@example.com","mot_de_passe":"passpass"},
+  {"id":10,"nom":"Martinez","login":"martinez55","adresse":"6 avenue des Acacias","email":"martinez@example.com","mot_de_passe":"password88"}
+]
