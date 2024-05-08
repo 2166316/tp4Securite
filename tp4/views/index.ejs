@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link type="text/css" rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="login-container">
+        <h2><%= title %></h2>
+        <form id="loginForm" action="/login" method="POST">
+            <input type="text" name="username" placeholder="Nom d'utilisateur" required>
+            <input type="password" name="password" placeholder="Mot de passe" required>
+            <button type="submit">Se connecter</button>
+        </form>
+        <div style="width: 25%; margin: auto; padding: auto;"><h3 style="text-align: center; color: red;" ><%= message %></h3></div>
+
+       <!-- <form action="/register" method="POST">
+            <input type="text" name="username" placeholder="Nom d'utilisateur" required>
+            <input type="password" name="password" placeholder="Mot de passe" required>
+            <button  type="submit">S'inscrire</button>
+        </form>-->
+    </div>
+</body>
+</html>

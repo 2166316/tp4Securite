@@ -1,35 +1,159 @@
 const mysql = require("mysql2");
+
 const express = require("express");
+
 const path = require("path");
+
 const bcrypt = require("bcrypt");
+
 const bodyParser = require('body-parser');
-var app = express();
 
 const fs = require("fs");
-var passwordGen = require('./passwordgenerator');
+//const rateLimit = require('express-rate-limit');
 
-app.use(express.static("img"));
+const session = require("express-session")
+
+require('dotenv').config();
+
+const { CaptchaJs } = require("@solarwinter/captchajs");
+const captcha = new CaptchaJs({ client: process.env.CAPTCHAS_CLIENT, secret: process.env.CAPTCHAS_SECRET });
+
+var app = express();
+
 app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
+app.use(session({
+    secret: 'your-secret-key', 
+    resave: false,
+    saveUninitialized: false,
+    nbDeCallDisponible:3
+}));  
 
+app.set('view engine', 'ejs');
+
+//folder de views
+app.set('views', path.join(__dirname, 'views'));
+
+//sert le css 
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.use((req, res, next) => {
+    console.log(req.body)
+
+    if (req.session.nbDeCallDisponible === undefined) {
+        req.session.nbDeCallDisponible = 3; 
+    } else {
+       // req.session.nbDeCallDisponible--; 
+    }
+    console.log(req.session.nbDeCallDisponible);
+    next(); 
+});
+
+//bd
 var con = mysql.createConnection({
     host: "127.0.0.1",
     port: 3306,
     user: "root",
     password: "", 
 })
-  
+
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    const data = {
+        title: 'Connexion',
+        message:""
+    };
+    res.render('index', data);
+    
 });
 
+app.post('/login', (req, res) => {
+    if(req.session.nbDeCallDisponible<=0){
+        const random = captcha.getRandomString();
+        //marche pas le register ne veut pas me répondre
+        const imageUrl = captcha.getImageUrl({ randomString: random });
 
-app.get("/genpasswords",(req, res) => {
-    passwordGen.password3LettreMinuscule();
-    res.sendStatus(200);
-})
+        res.render('indexcapchat', { imageUrl });
+    }
+    else{
+        const { username, password } = req.body;
+        let loginstr = username ;
+        let passwordstr = password ;
+        
+       // console.log(pass);
+        con.query("SELECT * FROM tp4securite.utilisateur WHERE login = ?", [loginstr], (err, results, fields) => {
+            if (err) {
+                console.error(err);
+                const data = {
+                    title: 'Connexion',
+                    message:"error"
+                };
+                res.render('index', data);
+            }
+            console.log(results.length)
 
+            const user = [];
+            let pass = "";
+            if (results.length === 0) {
+                req.session.nbDeCallDisponible--; 
+                const data = {
+                    title: 'Connexion',
+                    message:"error"
+                };
+                res.render('index', data);
+            }else{
 
+                user.push(results[0]); 
+                console.log(user);
+                pass = user[0].mot_de_passe+"";
+                
+                 bcrypt.compare(passwordstr, pass, (err, result) => {
+                    if (err) {
+                        console.error(err);
+                        const data = {
+                            title: 'Connexion',
+                            message:"error"
+                        };
+                        return res.render('index', data);
+                    }
+                    
+                    if (result) {
+                        console.log("200:");
+                        console.log(loginstr);
+                        console.log(passwordstr);
+                        console.log("-");
+                        
+                        return res.render('connected');
+                    } else {
+                        req.session.nbDeCallDisponible--; 
+                        const data = {
+                            title: 'Connexion',
+                            message:"error"
+                        };
+                        return res.render('index', data);
+                    }
+            });
+            }
+    });
+    }
+});
+  
+app.post('/capchatverif', (req, res) => {
+    //console.log(req.body);
+    if(req.body.captchaPassword == "abc"){
+        const data = {
+            title: 'Connexion',
+        };
+        req.session.nbDeCallDisponible = 3; 
+        res.render('index',data);
+    }else{
+        const random = captcha.getRandomString();
+        //marche pas le register ne veut pas me répondre
+        const imageUrl = captcha.getImageUrl({ randomString: random });
+
+        res.render('indexcapchat', { imageUrl });
+    } 
+});
 
 app.post('/register', (req, res) => {
     console.log(req.body)
@@ -64,8 +188,13 @@ app.post('/register', (req, res) => {
       });
 });
 
-app.post('/login', (req, res) => {
-    const { username, password } = req.body;
+/*app.post('/login', (req, res) => {
+    console.log(req.session.nbDeCallDisponible);
+    req.session.nbDeCallDisponible = (req.session.nbDeCallDisponible - 1 );
+
+    console.log(req.body);
+    return res.status(200).end();
+    /*const { username, password } = req.body;
     let loginstr = username ;
     let passwordstr = password ;
     con.query("SELECT * FROM tp4securite.utilisateur WHERE login = ?", [loginstr], (err, results, fields) => {
@@ -100,12 +229,12 @@ app.post('/login', (req, res) => {
                 return res.status(401).send("Invalid username or password");
             }
         });
-    });
-});
+    });*/
+/*});*/
 
 
-app.listen(3000, () => {
-    console.log('Serveur en écoute sur le port 3000');
+app.listen(3001, () => {
+    console.log('Serveur en écoute sur le port 3001');
 });
 
 
@@ -153,4 +282,41 @@ app.listen(3000, () => {
             });
           
         }
-    });*/
+    });/*const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Max requests per window
+    message: 'Too many requests from this IP, please try again later',
+    
+});
+
+app.use('/', limiter);*/
+
+/*app.use(session({
+    genid: function(req) {
+      return genuuid() // use UUIDs for session IDs
+    },
+    secret: 'keyboard cat'
+}))*/
+
+//var passwordGen = require('./passwordgenerator');
+
+//app.use(express.static("img"));
+//app.use(bodyParser.urlencoded({ extended: false }));
+
+/*app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+
+app.get("/genpasswords",(req, res) => {
+    passwordGen.password3LettreMinuscule();
+    res.sendStatus(200);
+})/*app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+
+app.get("/genpasswords",(req, res) => {
+    passwordGen.password3LettreMinuscule();
+    res.sendStatus(200);
+})**/
