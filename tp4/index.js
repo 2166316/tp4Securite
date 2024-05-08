@@ -32,9 +32,6 @@ app.use(session({
     nbDeCallDisponible:3
 }));  
 
-//en ram les ips 
-ramIps();
-
 function ramIps(){
     let ipfile = path.join(__dirname, 'ip.txt')
     fs.readFile(ipfile, 'utf8', (err, data) => {
@@ -52,6 +49,9 @@ function ramIps(){
     });
 }
 
+//en ram les ips 
+ramIps();
+
 app.set('view engine', 'ejs');
 
 //folder de views
@@ -59,6 +59,7 @@ app.set('views', path.join(__dirname, 'views'));
 
 //sert le css 
 app.use(express.static(path.join(__dirname, 'public')));
+
 
 app.use((req, res, next) => {
     //console.log((req.ip));
