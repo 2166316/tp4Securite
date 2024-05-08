@@ -6,22 +6,29 @@ const bodyParser = require('body-parser');
 var app = express();
 
 const fs = require("fs");
-
+var passwordGen = require('./passwordgenerator');
 
 app.use(express.static("img"));
 app.use(bodyParser.urlencoded({ extended: false }));
 
 
 var con = mysql.createConnection({
-    host: "tp2-database-cegeplimoilou-d98e.aivencloud.com",
-    port: 13923,
-    user: "avnadmin",
-    password: "AVNS_wB7IDMVSHeaD3M5nu0J", 
+    host: "127.0.0.1",
+    port: 3306,
+    user: "root",
+    password: "", 
 })
   
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
+
+
+app.get("/genpasswords",(req, res) => {
+    passwordGen.password3LettreMinuscule();
+    res.sendStatus(200);
+})
+
 
 
 app.post('/register', (req, res) => {
@@ -59,8 +66,9 @@ app.post('/register', (req, res) => {
 
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
-
-    con.query("SELECT * FROM tp4securite.utilisateur WHERE login = ?", [toString(username)], (err, results, fields) => {
+    let loginstr = username ;
+    let passwordstr = password ;
+    con.query("SELECT * FROM tp4securite.utilisateur WHERE login = ?", [loginstr], (err, results, fields) => {
         if (err) {
             console.error(err);
             return res.status(500).send("Internal Server Error");
@@ -71,15 +79,21 @@ app.post('/login', (req, res) => {
         }
 
         const user = results[0]; 
-        
-        bcrypt.compare(toString(password), toString(user.mot_de_passe), (err, result) => {
+        let pass = user.mot_de_passe;
+        //console.log(loginstr);
+        //console.log(passwordstr);
+        //console.log(pass);
+        bcrypt.compare(passwordstr, pass, (err, result) => {
             if (err) {
                 console.error(err);
                 return res.status(500).send("Internal Server Error");
             }
             
             if (result) {
-  
+                console.log("200:");
+                console.log(loginstr);
+                console.log(passwordstr);
+                console.log("-");
                 return res.status(200).send("Login successful");
             } else {
      
