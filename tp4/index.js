@@ -15,7 +15,8 @@ const session = require("express-session")
 
 require('dotenv').config();
 
-
+//const { CaptchaJs } = require("@solarwinter/captchajs");
+//const captcha = new CaptchaJs({ client: process.env.CAPTCHAS_CLIENT, secret: process.env.CAPTCHAS_SECRET });
 
 var app = express();
 
@@ -30,6 +31,41 @@ app.use(session({
     saveUninitialized: false,
     nbDeCallDisponible:3
 }));  
+
+function genererCodeTemp() {
+    const caracteres = '0123456789';
+    const longueur = 6;
+    let motDePasse = '';
+  
+    for (let i = 0; i < longueur; i++) {
+      const randomIndex = Math.floor(Math.random() * caracteres.length);
+      motDePasse += caracteres[randomIndex];
+    }
+  
+    return motDePasse;
+}
+
+function sauvegarderCodeTemporaire(nomUtilisateur) {
+    const code = genererCodeTemp();
+    const maintenant = new Date();
+    const dateCreation = maintenant.toISOString().replace(/:/g, '.').replace(/T/g, '-').split('.')[0];
+    const nomFichier = `${nomUtilisateur}_${dateCreation}.txt`;
+
+    const cheminFichier = path.join(__dirname, 'public', nomFichier);
+    const expiration = new Date(maintenant.getTime() + 15 * 60000);
+
+    let fichierExist = false;
+    const contenuFichier = `Code temporaire: ${code}\nValide jusqu'à: ${expiration}`;
+    
+    fs.writeFile(cheminFichier, contenuFichier, (err) => {
+      if (err) {
+        console.error('Erreur lors de la sauvegarde du code temporaire : ', err);
+      } else {
+        console.log('Code temporaire sauvegardé avec succès dans : ', cheminFichier);
+      }
+    });
+    return cheminFichier;
+}
 
 function ramIps(){
     let ipfile = path.join(__dirname, 'ip.txt')
@@ -97,14 +133,49 @@ app.get('/', (req, res) => {
         message:""
     };
     res.render('index', data);
+});
+
+app.get('/connected', (req, res)=>{
+    res.render('connected');
+})
+
+app.get('/a2f',(req,res)=>{
+    res.render('a2f');
+})
+
+app.post('/confirmeA2F', (req, res)=> {
+    const { code } = req.body;
+    const cheminFichier = req.session.cheminFichier;
+    console.log(cheminFichier);
+    fs.readFile(cheminFichier, 'utf8', (err, data) => {
+        if (err) {
+          console.error('Erreur lors de la lecture du fichier : ', err);
+          return;
+        }
     
+
+    const lignes = data.split('\n');
+    const codeTemporaire = lignes[0].split(': ')[1];
+    console.log(codeTemporaire);
+
+    if (code === codeTemporaire) {
+        console.log('Validation réussie ! Vous êtes connecté.');
+        res.redirect('connected');
+      } else {
+        console.log('Code de validation incorrect. Veuillez réessayer.');
+        res.redirect('nope');
+      }
+    });
+
 });
 
 app.post('/login', (req, res) => {
     if(req.session.nbDeCallDisponible<=0){
-    
+        //const random = captcha.getRandomString();
+        //marche pas le register ne veut pas me répondre
+        //const imageUrl = captcha.getImageUrl({ randomString: random });
 
-        res.render('indexcapchat');
+        res.render('indexcapchat', { imageUrl });
     }
     else{
         const { username, password } = req.body;
@@ -147,14 +218,14 @@ app.post('/login', (req, res) => {
                         };
                         return res.render('index', data);
                     }
-                    
+                    console.log(result);
                     if (result) {
                         //console.log("200:");
                         //console.log(loginstr);
                         //console.log(passwordstr);
                        // console.log("-");
-                        
-                        return res.render('connected');
+                        req.session.cheminFichier = sauvegarderCodeTemporaire(username);
+                        res.redirect('a2f');
                     } else {
                         req.session.nbDeCallDisponible--; 
                         const data = {
@@ -179,10 +250,11 @@ app.post('/capchatverif', (req, res) => {
         req.session.nbDeCallDisponible = 3; 
         res.render('index',data);
     }else{
-        
+        //const random = captcha.getRandomString();
         //marche pas le register ne veut pas me répondre
-       
-        res.render('indexcapchat');
+        const imageUrl = captcha.getImageUrl({ randomString: random });
+
+        res.render('indexcapchat', { imageUrl });
     } 
 });
 
@@ -192,13 +264,13 @@ app.post('/register', (req, res) => {
     let passwordstr = password;
 
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[%&$!#@])[a-zA-Z\d%&$!#@]{10,}(?:(.)\1{2,})?$/;
+    //Abc123@#$%
     
     con.query("SELECT * FROM tp4securite.utilisateur", (err, results, fields) => {
         if (err) {
             console.error(err);
             return res.status(500).send("Error occurred while fetching user data.");
         }
-
         if (passwordRegex.test(passwordstr) === false ) {
             return res.render('index', { title: 'Connexion', message: "Le password doit être plus de 10 lettres/nombres" });
         } else {
@@ -220,6 +292,7 @@ app.post('/register', (req, res) => {
         }
     });
 });
+
 
 
 app.listen(3001, () => {
