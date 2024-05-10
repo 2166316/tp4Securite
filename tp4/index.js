@@ -15,8 +15,7 @@ const session = require("express-session")
 
 require('dotenv').config();
 
-const { CaptchaJs } = require("@solarwinter/captchajs");
-const captcha = new CaptchaJs({ client: process.env.CAPTCHAS_CLIENT, secret: process.env.CAPTCHAS_SECRET });
+
 
 var app = express();
 
@@ -103,11 +102,9 @@ app.get('/', (req, res) => {
 
 app.post('/login', (req, res) => {
     if(req.session.nbDeCallDisponible<=0){
-        const random = captcha.getRandomString();
-        //marche pas le register ne veut pas me répondre
-        const imageUrl = captcha.getImageUrl({ randomString: random });
+    
 
-        res.render('indexcapchat', { imageUrl });
+        res.render('indexcapchat');
     }
     else{
         const { username, password } = req.body;
@@ -182,11 +179,10 @@ app.post('/capchatverif', (req, res) => {
         req.session.nbDeCallDisponible = 3; 
         res.render('index',data);
     }else{
-        const random = captcha.getRandomString();
+        
         //marche pas le register ne veut pas me répondre
-        const imageUrl = captcha.getImageUrl({ randomString: random });
-
-        res.render('indexcapchat', { imageUrl });
+       
+        res.render('indexcapchat');
     } 
 });
 
@@ -201,10 +197,6 @@ app.post('/register', (req, res) => {
         if (err) {
             console.error(err);
             return res.status(500).send("Error occurred while fetching user data.");
-        }
-
-        if (results.length === 0) {
-            return res.render('index', { title: 'Connexion', message: "No users found." });
         }
 
         if (passwordRegex.test(passwordstr) === false ) {

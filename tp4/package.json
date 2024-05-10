@@ -11,11 +11,10 @@
     "mysql2": "^3.9.3",
     "node": "^18.20.0",
     "node-module": "^2.0.0",
-    "node-rate-limiter": "^1.0.1",
     "nodemon": "^3.1.0"
   },
   "scripts": {
-    "start": "nodemon index.js"
+    "dev": "nodemon index.js"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
