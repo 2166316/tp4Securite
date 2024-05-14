@@ -54,8 +54,17 @@ function sauvegarderCodeTemporaire(nomUtilisateur) {
     const cheminFichier = path.join(__dirname, 'public', nomFichier);
     const expiration = new Date(maintenant.getTime() + 15 * 60000);
 
-    let fichierExist = false;
+
     const contenuFichier = `Code temporaire: ${code}\nValide jusqu'à: ${expiration}`;
+    
+    if(fs.existsSync(cheminFichier)){ 
+        var fileContent = fs.readFileSync(cheminFichier, 'utf8');
+        var expirationDateString = fileContent.match(/Valide jusqu'à: (.+)/)[1];
+        if(new Date(expirationDateString) > maintenant){
+            console.log('Code temporaire déjà existant et valide. Utilisation du code existant.');
+            return cheminFichier;
+        }
+    }
     
     fs.writeFile(cheminFichier, contenuFichier, (err) => {
       if (err) {
@@ -163,7 +172,7 @@ app.post('/confirmeA2F', (req, res)=> {
         res.redirect('connected');
       } else {
         console.log('Code de validation incorrect. Veuillez réessayer.');
-        res.redirect('nope');
+        res.send('Code de validation incorrect. Veuillez réessayer.');
       }
     });
 
